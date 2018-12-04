@@ -1,5 +1,6 @@
 package com.ocetnik.timer;
 
+import android.app.Activity;
 import android.os.Handler;
 import android.os.PowerManager;
 
@@ -11,19 +12,21 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import java.lang.Runnable;
+import java.lang.ref.WeakReference;
 
 public class BackgroundTimerModule extends ReactContextBaseJavaModule {
 
-    private Handler handler;
+    private MyHandler handler;
     private ReactContext reactContext;
     private Runnable runnable;
     private PowerManager powerManager;
     private PowerManager.WakeLock wakeLock;
-    private final LifecycleEventListener listener = new LifecycleEventListener(){
+    private final LifecycleEventListener listener = new LifecycleEventListener() {
         @Override
         public void onHostResume() {
             wakeLock.acquire();
         }
+
         @Override
         public void onHostPause() {
             //wakeLock.release();
@@ -50,11 +53,13 @@ public class BackgroundTimerModule extends ReactContextBaseJavaModule {
 
     @ReactMethod
     public void start(final int delay) {
-        handler = new Handler();
+        handler = new MyHandler(getCurrentActivity());
         runnable = new Runnable() {
             @Override
             public void run() {
-                sendEvent(reactContext, "backgroundTimer");
+                if (handler.isValid()) {
+                    sendEvent(reactContext, "backgroundTimer");
+                }
             }
         };
 
@@ -69,22 +74,24 @@ public class BackgroundTimerModule extends ReactContextBaseJavaModule {
 
     private void sendEvent(ReactContext reactContext, String eventName) {
         reactContext
-        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-        .emit(eventName, null);
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, null);
     }
 
     @ReactMethod
     public void setTimeout(final int id, final int timeout) {
-        Handler handler = new Handler();
-        handler.postDelayed(new Runnable(){
+        final MyHandler handler = new MyHandler(getCurrentActivity());
+        handler.postDelayed(new Runnable() {
             @Override
-            public void run(){
-                if (getReactApplicationContext().hasActiveCatalystInstance()) {
-                    getReactApplicationContext()
-                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                        .emit("backgroundTimer.timeout", id);
+            public void run() {
+                if (handler.isValid()) {
+                    if (getReactApplicationContext().hasActiveCatalystInstance()) {
+                        getReactApplicationContext()
+                                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                                .emit("backgroundTimer.timeout", id);
+                    }
                 }
-           }
+            }
         }, timeout);
     }
 
@@ -93,4 +100,17 @@ public class BackgroundTimerModule extends ReactContextBaseJavaModule {
         // todo one day..
         // not really neccessary to have
     }*/
+
+    private static class MyHandler extends Handler {
+        private final WeakReference<Activity> weakReference;
+
+        MyHandler(Activity activity) {
+            weakReference = new WeakReference<>(activity);
+        }
+
+        public boolean isValid() {
+            Activity activity = weakReference.get();
+            return activity != null && !activity.isFinishing();
+        }
+    }
 }
