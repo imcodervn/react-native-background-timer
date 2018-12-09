@@ -19,30 +19,33 @@ public class BackgroundTimerModule extends ReactContextBaseJavaModule {
     private MyHandler handler;
     private ReactContext reactContext;
     private Runnable runnable;
-    private PowerManager powerManager;
-    private PowerManager.WakeLock wakeLock;
+//    private PowerManager powerManager;
+//    private PowerManager.WakeLock wakeLock;
     private final LifecycleEventListener listener = new LifecycleEventListener() {
         @Override
         public void onHostResume() {
-            wakeLock.acquire();
+//            wakeLock.acquire();
+            reactContext.addLifecycleEventListener(this);
         }
 
         @Override
         public void onHostPause() {
             //wakeLock.release();
+            reactContext.removeLifecycleEventListener(this);
         }
 
         @Override
         public void onHostDestroy() {
-            if (wakeLock.isHeld()) wakeLock.release();
+//            if (wakeLock.isHeld()) wakeLock.release();
+            reactContext.removeLifecycleEventListener(this);
         }
     };
 
     public BackgroundTimerModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
-        this.powerManager = (PowerManager) getReactApplicationContext().getSystemService(reactContext.POWER_SERVICE);
-        this.wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "rohit_bg_wakelock");
+//        this.powerManager = (PowerManager) getReactApplicationContext().getSystemService(reactContext.POWER_SERVICE);
+//        this.wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "rohit_bg_wakelock");
         reactContext.addLifecycleEventListener(listener);
     }
 
